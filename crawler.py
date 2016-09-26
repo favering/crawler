@@ -37,20 +37,25 @@ class ThreadPool:
     def thread_routing(self):
         """
         所有线程的执行函数
+        :return:
         """
         pass
 
     def put_task(self, raw, prior=2):
         """
         添加任务到队列
-        常规任务的优先级设为 2，默认
-        线程终止任务的优先级较高，设为 1， 即：收到退出命令，立即退出
+        :param raw: 任务内容
+        :param prior: 任务优先级。
+                      常规任务的优先级设为 2，默认。
+                      线程终止任务的优先级较高，设为 1， 即：收到终止命令，立即退出
+        :return:
         """
         self.task_queue.put((prior, raw))
 
     def start(self):
         """
-        所有线程开启
+        开启所有线程
+        :return:
         """
         for thread in self.threads:
             thread.start()
@@ -58,6 +63,7 @@ class ThreadPool:
     def wait(self):
         """
         等待任务队列全部完成
+        :return:
         """
         self.task_queue.join()
         self.stop()
@@ -65,6 +71,7 @@ class ThreadPool:
     def stop(self):
         """
         终止线程池
+        :return:
         """
         pass
 
@@ -81,14 +88,14 @@ class DownloadPool(ThreadPool):
         # 处理过的url链接
         self.prcessed_url = []
 
-        # 线程池当前状态
+        # 线程池当前状态字典
         # qsize 当前队列中的任务数
         # stop 线程池是否进入终止状态(True:正在终止 False:未进入终止)
         self.task_status = {}
         self.task_status["qsize"] = 0
         self.task_status['stop'] = False
 
-        # crawl_st 各线程爬取状态，添加到self.task_status
+        # crawl_st 各线程爬取状态字典，添加到self.task_status
         # key           线程名
         # link_count    该线程处理的链接数
         # img_count     该线程下载的图片数
@@ -109,7 +116,8 @@ class DownloadPool(ThreadPool):
 
     def stop(self):
         """
-        具体的线程池终止功能实现
+        具体的线程池终止实现
+        :return:
         """
         # 进入终止状态
         with self.lock_status:
@@ -134,8 +142,8 @@ class DownloadPool(ThreadPool):
     def thread_routing(self):
         """
         重写基类的线程执行函数。
+        :return:
         """
-
         while True:
 
             # 任务队列的任务task是tuple类型
@@ -184,7 +192,6 @@ class DownloadPool(ThreadPool):
         :param current_depth: 当前深度
         :return:
         """
-
         # 伪装成浏览器，以达到更好的爬取效果
         header = {
             "User-Agent": "Mozilla/5.0 (Windows NT 5.1; rv:18.0) Gecko/20100101 Firefox/18.0",
@@ -201,13 +208,13 @@ class DownloadPool(ThreadPool):
 
         # 取得当前response的类型
         content_type = response.getheader('Content-Type')
-        # 如果页面是则处理页面（到达指定深度时则无需再解析）
+        # 如果是页面则解析页面（到达指定深度时则无需再解析）
         if 'html' in content_type and current_depth < self.depth:
             try:
                 self._parse_html(response, target_url, current_depth)
             except Exception as e:
                 _logger.error("Failed parse: {} [{}]".format(target_url, e))
-        # 如果是图片则处理图片
+        # 如果是图片则保存图片
         elif 'image' in content_type:
             try:
                 self._save_img(response, target_url)
@@ -227,7 +234,6 @@ class DownloadPool(ThreadPool):
         :param current_depth: 当前深度
         :return:
         """
-
         # 尝试解码response, 传给lxml进行解析
         charset, html_text = self._decode_read(response)
         doc = lxml.html.document_fromstring(html_text)
@@ -257,7 +263,6 @@ class DownloadPool(ThreadPool):
         :return charset: response的字符集
         :return html_text: response解码后的字符串
         """
-
         rdata = response.read()
 
         # 首选按网页返回字符集进行解码
@@ -299,6 +304,9 @@ class DownloadPool(ThreadPool):
     def _save_img(self, response, target_url):
         """
         从response读取图片，保存图片到数据库
+        :param response:
+        :param target_url: 该图片的url
+        :return:
         """
         with self.lock_sqlite:
             _sqlite_wrapper.write(target_url, response.read())
@@ -306,6 +314,7 @@ class DownloadPool(ThreadPool):
     def status(self):
         """
         返回线程池当前的状态
+        :return: self.task_status
         """
         with self.lock_status:
             # 获取任务队列当前的大小
@@ -321,10 +330,17 @@ class SqliteWrapper:
     Sqlite 包裹类，实现对 Sqlite 的打开、读写、关闭操作。
     """
     def __init__(self):
-        # Sqlite 写入锁，以此实现线程安全的 Sqlite 写
+        # Sqlite 写入锁，以此实现线程安全的Sqlite写
+        # （经测试，这种内部加锁的方式，不知何因，运行久了会出现阻塞的现象，
+        # 改为外部调用者自己加锁后，基本没再出现阻塞。所以该锁就暂时没用到）
         self.lock = threading.Lock()
 
     def open(self, db_path):
+        """
+        打开sqlite
+        :param db_path: sqlite数据库文件路径
+        :return:
+        """
         self.con = sqlite3.connect(db_path, check_same_thread=False)
         self.cur = self.con.cursor()
         # 建表resulte，列url保存图片的链接地址，列image保存图片内容
@@ -332,6 +348,10 @@ class SqliteWrapper:
         self.con.commit()
 
     def close(self):
+        """
+        关闭sqlite
+        :return:
+        """
         self.cur.close()
         self.con.close()
 
@@ -342,7 +362,6 @@ class SqliteWrapper:
         :param img: 图片二进制数据
         :return:
         """
-
         # with self.lock:
         self.cur.execute("insert into resulte(url, image) values(?, ?)", (url, img))
         self.con.commit()
@@ -381,7 +400,6 @@ class SqliteWrapper:
 
         return count
 
-
 class StatusThread(threading.Thread):
     """
     定时打印爬取状态的线程类
@@ -394,6 +412,9 @@ class StatusThread(threading.Thread):
         self.stop_flag = threading.Event()
 
     def run(self):
+        """
+        :return:
+        """
         while True:
             # 收到终止命令
             if self.stop_flag.is_set():
@@ -439,12 +460,17 @@ class StatusThread(threading.Thread):
         print("")
 
     def stop(self):
+        """
+        终止线程
+        :return:
+       """
         self.stop_flag.set()
         self.join()
 
 def _init_logger(level, log_file):
     """
     初始化日志
+    :return:
     """
     global _logger
     _logger = logging.getLogger('Crawler')
@@ -469,6 +495,10 @@ def _init_logger(level, log_file):
     _logger.setLevel((6-level)*10)
 
 def _parse_args():
+    """
+    参数解析
+    :return:
+    """
     import argparse
     parser = argparse.ArgumentParser(
         description="A python script crawling the web, starting from a specified URL, downloading any"

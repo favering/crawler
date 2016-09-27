@@ -503,13 +503,13 @@ def _parse_args():
     parser = argparse.ArgumentParser(
         description="A python script crawling the web, starting from a specified URL, downloading any"
                     " image and store in sqlite database.")
-    parser.add_argument('-u', '--url', required=True)
-    parser.add_argument('-d', '--deep', type=int, required=True)
-    parser.add_argument('--thread', type=int, default=10)
-    parser.add_argument('--dbfile', default="crawler.db")
-    parser.add_argument('-o', '--timeout', type=int, default=10, help="Http request timeout.")
-    parser.add_argument('-f', '--logfile', default="crawler.log")
-    parser.add_argument('-l', '--loglevel', choices=[1,2,3,4,5], default=5)
+    parser.add_argument('-u', '--url', required=True, help="the starting URL.")
+    parser.add_argument('-d', '--deep', type=int, required=True, help="crawling deep.")
+    parser.add_argument('--thread', type=int, default=10, help="crawling thread pool thread number, default 10.")
+    parser.add_argument('--dbfile', default="crawler.db", help="sqlite db path, default crawler.db.")
+    parser.add_argument('-o', '--timeout', type=int, default=10, help="http request timeout, default 10.")
+    parser.add_argument('-f', '--logfile', default="crawler.log", help="log file path, default crawler.log.")
+    parser.add_argument('-l', '--loglevel', choices=[1,2,3,4,5], default=5, help="log level, default 5.")
     return parser.parse_args()
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ import os.path
 import os
 
 parser = argparse.ArgumentParser(description="Extract image from sqlite db writen by crawler.py to a directory.")
-parser.add_argument('-d', '--dbfile')
+parser.add_argument('-d', '--dbfile', required=True)
 parser.add_argument('-t', '--to_directory', default="img")
 args = parser.parse_args()
 

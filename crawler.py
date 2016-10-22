@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-# -*- coding: gb18030 -*-
+# -*- coding: UTF-8 -*-
 
 import queue
 import urllib.request
@@ -15,46 +15,46 @@ import logging.handlers
 import copy
 import sqlite3
 
-# ÈÕÖ¾¶ÔÏó
+# æ—¥å¿—å¯¹è±¡
 _logger = None
-# sqlite¶ÁĞ´¶ÔÏó
+# sqliteè¯»å†™å¯¹è±¡
 _sqlite_wrapper = None
-# Ò³ÃæÇëÇótimeout
+# é¡µé¢è¯·æ±‚timeout
 _OPENURL_TIMEOUT = None
 
 class ThreadPool:
     """
-    Ïß³Ì³Ø»ùÀà
+    çº¿ç¨‹æ± åŸºç±»
     """
     def __init__(self, thread_num):
         self.threads = \
             [threading.Thread(target=self.thread_routing) for _ in range(thread_num)]
 
-        # task_queueÎªPriorityQueue£¬
-        # Ö÷ÒªÊÇÎªÇø·Ö³£¹æÈÎÎñºÍÖÕÖ¹ÈÎÎñ²»Í¬µÄÓÅÏÈ¼¶
+        # task_queueä¸ºPriorityQueueï¼Œ
+        # ä¸»è¦æ˜¯ä¸ºåŒºåˆ†å¸¸è§„ä»»åŠ¡å’Œç»ˆæ­¢ä»»åŠ¡ä¸åŒçš„ä¼˜å…ˆçº§
         self.task_queue = queue.PriorityQueue()
 
     def thread_routing(self):
         """
-        ËùÓĞÏß³ÌµÄÖ´ĞĞº¯Êı
+        æ‰€æœ‰çº¿ç¨‹çš„æ‰§è¡Œå‡½æ•°
         :return:
         """
         pass
 
     def put_task(self, raw, prior=2):
         """
-        Ìí¼ÓÈÎÎñµ½¶ÓÁĞ
-        :param raw: ÈÎÎñÄÚÈİ
-        :param prior: ÈÎÎñÓÅÏÈ¼¶¡£
-                      ³£¹æÈÎÎñµÄÓÅÏÈ¼¶ÉèÎª 2£¬Ä¬ÈÏ¡£
-                      Ïß³ÌÖÕÖ¹ÈÎÎñµÄÓÅÏÈ¼¶½Ï¸ß£¬ÉèÎª 1£¬ ¼´£ºÊÕµ½ÖÕÖ¹ÃüÁî£¬Á¢¼´ÍË³ö
+        æ·»åŠ ä»»åŠ¡åˆ°é˜Ÿåˆ—
+        :param raw: ä»»åŠ¡å†…å®¹
+        :param prior: ä»»åŠ¡ä¼˜å…ˆçº§ã€‚
+                      å¸¸è§„ä»»åŠ¡çš„ä¼˜å…ˆçº§è®¾ä¸º 2ï¼Œé»˜è®¤ã€‚
+                      çº¿ç¨‹ç»ˆæ­¢ä»»åŠ¡çš„ä¼˜å…ˆçº§è¾ƒé«˜ï¼Œè®¾ä¸º 1ï¼Œ å³ï¼šæ”¶åˆ°ç»ˆæ­¢å‘½ä»¤ï¼Œç«‹å³é€€å‡º
         :return:
         """
         self.task_queue.put((prior, raw))
 
     def start(self):
         """
-        ¿ªÆôËùÓĞÏß³Ì
+        å¼€å¯æ‰€æœ‰çº¿ç¨‹
         :return:
         """
         for thread in self.threads:
@@ -62,7 +62,7 @@ class ThreadPool:
 
     def wait(self):
         """
-        µÈ´ıÈÎÎñ¶ÓÁĞÈ«²¿Íê³É
+        ç­‰å¾…ä»»åŠ¡é˜Ÿåˆ—å…¨éƒ¨å®Œæˆ
         :return:
         """
         self.task_queue.join()
@@ -70,114 +70,114 @@ class ThreadPool:
 
     def stop(self):
         """
-        ÖÕÖ¹Ïß³Ì³Ø
+        ç»ˆæ­¢çº¿ç¨‹æ± 
         :return:
         """
         pass
 
 class DownloadPool(ThreadPool):
     """
-    ÍøÒ³ÅÀÈ¡Ïß³Ì³Ø
+    ç½‘é¡µçˆ¬å–çº¿ç¨‹æ± 
     """
     def __init__(self, thread_num, depth):
         super().__init__(thread_num)
 
-        # Ä¿±êÅÀÈ¡Éî¶È
+        # ç›®æ ‡çˆ¬å–æ·±åº¦
         self.depth = depth
 
-        # ´¦Àí¹ıµÄurlÁ´½Ó
+        # å¤„ç†è¿‡çš„urlé“¾æ¥
         self.prcessed_url = []
 
-        # Ïß³Ì³Øµ±Ç°×´Ì¬×Öµä
-        # qsize µ±Ç°¶ÓÁĞÖĞµÄÈÎÎñÊı
-        # stop Ïß³Ì³ØÊÇ·ñ½øÈëÖÕÖ¹×´Ì¬(True:ÕıÔÚÖÕÖ¹ False:Î´½øÈëÖÕÖ¹)
+        # çº¿ç¨‹æ± å½“å‰çŠ¶æ€å­—å…¸
+        # qsize å½“å‰é˜Ÿåˆ—ä¸­çš„ä»»åŠ¡æ•°
+        # stop çº¿ç¨‹æ± æ˜¯å¦è¿›å…¥ç»ˆæ­¢çŠ¶æ€(True:æ­£åœ¨ç»ˆæ­¢ False:æœªè¿›å…¥ç»ˆæ­¢)
         self.task_status = {}
         self.task_status["qsize"] = 0
         self.task_status['stop'] = False
 
-        # crawl_st ¸÷Ïß³ÌÅÀÈ¡×´Ì¬×Öµä£¬Ìí¼Óµ½self.task_status
-        # key           Ïß³ÌÃû
-        # link_count    ¸ÃÏß³Ì´¦ÀíµÄÁ´½ÓÊı
-        # img_count     ¸ÃÏß³ÌÏÂÔØµÄÍ¼Æ¬Êı
-        # cur_depth     ¸ÃÏß³Ìµ±Ç°Éî¶È
-        # state         ¸ÃÏß³ÌµÄ´æ»î×´Ì¬
+        # crawl_st å„çº¿ç¨‹çˆ¬å–çŠ¶æ€å­—å…¸ï¼Œæ·»åŠ åˆ°self.task_status
+        # key           çº¿ç¨‹å
+        # link_count    è¯¥çº¿ç¨‹å¤„ç†çš„é“¾æ¥æ•°
+        # img_count     è¯¥çº¿ç¨‹ä¸‹è½½çš„å›¾ç‰‡æ•°
+        # cur_depth     è¯¥çº¿ç¨‹å½“å‰æ·±åº¦
+        # state         è¯¥çº¿ç¨‹çš„å­˜æ´»çŠ¶æ€
         crawl_st = {}
         for thread in self.threads:
             crawl_st[thread.name] = \
                 {'link_count': 0, 'img_count': 0, 'cur_depth': 0, 'state': 'dead'}
         self.task_status['crawl_st'] = crawl_st
 
-        # self.task_status¶ÁĞ´Ëø
+        # self.task_statusè¯»å†™é”
         self.lock_status = threading.Lock()
-        # self.prcessed_url¶ÁĞ´Ëø
+        # self.prcessed_urlè¯»å†™é”
         self.lock_url = threading.Lock()
-        # sqlite ¶ÁĞ´Ëø
+        # sqlite è¯»å†™é”
         self.lock_sqlite = threading.Lock()
 
     def stop(self):
         """
-        ¾ßÌåµÄÏß³Ì³ØÖÕÖ¹ÊµÏÖ
+        å…·ä½“çš„çº¿ç¨‹æ± ç»ˆæ­¢å®ç°
         :return:
         """
-        # ½øÈëÖÕÖ¹×´Ì¬
+        # è¿›å…¥ç»ˆæ­¢çŠ¶æ€
         with self.lock_status:
             self.task_status['stop'] = True
 
-        # ÓÃÉî¶ÈÎª-1µÄÈÎÎñ±íÊ¾µ±Ç°Ïß³ÌĞèÖÕÖ¹
+        # ç”¨æ·±åº¦ä¸º-1çš„ä»»åŠ¡è¡¨ç¤ºå½“å‰çº¿ç¨‹éœ€ç»ˆæ­¢
         for _ in range(len(self.threads)):
-            # ¸ÃÈÎÎñµÄÓÅÏÈ¼¶Îª1, Îª×î¸ß£¬¼´Á¢¼´´¦Àí¸ÃÈÎÎñ
+            # è¯¥ä»»åŠ¡çš„ä¼˜å…ˆçº§ä¸º1, ä¸ºæœ€é«˜ï¼Œå³ç«‹å³å¤„ç†è¯¥ä»»åŠ¡
             self.put_task((-1, ""), prior=1)
 
-        # µÈ´ıÏß³ÌÖÕÖ¹
+        # ç­‰å¾…çº¿ç¨‹ç»ˆæ­¢
         for thread in self.threads:
             thread.join()
 
-        # Çå¿ÕÈÎÎñ¶ÓÁĞ²ĞÁôÈÎÎñ(Èç¹ûÓĞ)
+        # æ¸…ç©ºä»»åŠ¡é˜Ÿåˆ—æ®‹ç•™ä»»åŠ¡(å¦‚æœæœ‰)
         # clear_task()
 
-        # ÖÕÖ¹Íê³É
+        # ç»ˆæ­¢å®Œæˆ
         with self.lock_status:
             self.task_status['stop'] = False
 
     def thread_routing(self):
         """
-        ÖØĞ´»ùÀàµÄÏß³ÌÖ´ĞĞº¯Êı¡£
+        é‡å†™åŸºç±»çš„çº¿ç¨‹æ‰§è¡Œå‡½æ•°ã€‚
         :return:
         """
         while True:
 
-            # ÈÎÎñ¶ÓÁĞµÄÈÎÎñtaskÊÇtupleÀàĞÍ
-            # task[0] ¸ÃÈÎÎñµÄÓÅÏÈ¼¶
-            # task[1][0] µ±Ç°Éî¶È, ÓÃ-1±íÊ¾Ïß³ÌĞèÒªÖÕÖ¹£¬0±íÊ¾³õÊ¼Ò³Ãæ
-            # task[1][1] ÒªÇëÇóµÄURL
+            # ä»»åŠ¡é˜Ÿåˆ—çš„ä»»åŠ¡taskæ˜¯tupleç±»å‹
+            # task[0] è¯¥ä»»åŠ¡çš„ä¼˜å…ˆçº§
+            # task[1][0] å½“å‰æ·±åº¦, ç”¨-1è¡¨ç¤ºçº¿ç¨‹éœ€è¦ç»ˆæ­¢ï¼Œ0è¡¨ç¤ºåˆå§‹é¡µé¢
+            # task[1][1] è¦è¯·æ±‚çš„URL
             task = self.task_queue.get()
             current_depth = task[1][0]
             target_url = task[1][1]
 
-            # ÊÕµ½ÖÕÖ¹ÈÎÎñ£¬µ±Ç°Ïß³ÌÍË³ö
+            # æ”¶åˆ°ç»ˆæ­¢ä»»åŠ¡ï¼Œå½“å‰çº¿ç¨‹é€€å‡º
             if current_depth == -1:
                 self.task_queue.task_done()
                 break
 
-            # # ³¬¹ıÅÀÈ¡Éî¶È£¬»ñÈ¡ÏÂÒ»¸öÈÎÎñ£¨ÒòÎªÓĞ¿ÉÄÜ»¹ÓĞÄ¿±êÉî¶ÈÄÚµÄÈÎÎñ£©
+            # # è¶…è¿‡çˆ¬å–æ·±åº¦ï¼Œè·å–ä¸‹ä¸€ä¸ªä»»åŠ¡ï¼ˆå› ä¸ºæœ‰å¯èƒ½è¿˜æœ‰ç›®æ ‡æ·±åº¦å†…çš„ä»»åŠ¡ï¼‰
             # if current_depth > self.depth:
             #     self.task_queue.task_done()
             #     continue
 
-            # ÒÑ´¦Àí¹ıµÄÁ´½Ó£¬²»ÔÙ´¦Àí
+            # å·²å¤„ç†è¿‡çš„é“¾æ¥ï¼Œä¸å†å¤„ç†
             with self.lock_url:
                 if target_url in self.prcessed_url:
                     self.task_queue.task_done()
                     continue
                 self.prcessed_url.append(target_url)
 
-            # ¸üĞÂÈÎÎñ×´Ì¬
+            # æ›´æ–°ä»»åŠ¡çŠ¶æ€
             thread_name = threading.current_thread().name
             with self.lock_status:
                 self.task_status['crawl_st'][thread_name]['link_count'] += 1
                 self.task_status['crawl_st'][thread_name]['cur_depth'] = current_depth
 
-            # ´¦ÀíÁ´½Ó
+            # å¤„ç†é“¾æ¥
             try:
                 self._process_link(target_url, current_depth)
             except Exception as e:
@@ -187,18 +187,18 @@ class DownloadPool(ThreadPool):
 
     def _process_link(self, target_url, current_depth):
         """
-        ´¦ÀíÁ´½Ó
-        :param target_url: Á´½ÓµÄURL
-        :param current_depth: µ±Ç°Éî¶È
+        å¤„ç†é“¾æ¥
+        :param target_url: é“¾æ¥çš„URL
+        :param current_depth: å½“å‰æ·±åº¦
         :return:
         """
-        # Î±×°³Éä¯ÀÀÆ÷£¬ÒÔ´ïµ½¸üºÃµÄÅÀÈ¡Ğ§¹û
+        # ä¼ªè£…æˆæµè§ˆå™¨ï¼Œä»¥è¾¾åˆ°æ›´å¥½çš„çˆ¬å–æ•ˆæœ
         header = {
             "User-Agent": "Mozilla/5.0 (Windows NT 5.1; rv:18.0) Gecko/20100101 Firefox/18.0",
             "Connection":	"keep-alive"}
-        # ×ªÒåº¬ÓĞÖĞÎÄµÄurl
+        # è½¬ä¹‰å«æœ‰ä¸­æ–‡çš„url
         target_url = quote(target_url, safe='/:?&;%=@#*')
-        # ´ò¿ªÒ³Ãæ
+        # æ‰“å¼€é¡µé¢
         request = urllib.request.Request(url=target_url, headers=header)
         try:
             response = urllib.request.urlopen(request, timeout=_OPENURL_TIMEOUT)
@@ -206,51 +206,51 @@ class DownloadPool(ThreadPool):
             _logger.error("Failed open: {} [{}]".format(target_url, e))
             return
 
-        # È¡µÃµ±Ç°responseµÄÀàĞÍ
+        # å–å¾—å½“å‰responseçš„ç±»å‹
         content_type = response.getheader('Content-Type')
-        # Èç¹ûÊÇÒ³ÃæÔò½âÎöÒ³Ãæ£¨µ½´ïÖ¸¶¨Éî¶ÈÊ±ÔòÎŞĞèÔÙ½âÎö£©
+        # å¦‚æœæ˜¯é¡µé¢åˆ™è§£æé¡µé¢ï¼ˆåˆ°è¾¾æŒ‡å®šæ·±åº¦æ—¶åˆ™æ— éœ€å†è§£æï¼‰
         if 'html' in content_type and current_depth < self.depth:
             try:
                 self._parse_html(response, target_url, current_depth)
             except Exception as e:
                 _logger.error("Failed parse: {} [{}]".format(target_url, e))
-        # Èç¹ûÊÇÍ¼Æ¬Ôò±£´æÍ¼Æ¬
+        # å¦‚æœæ˜¯å›¾ç‰‡åˆ™ä¿å­˜å›¾ç‰‡
         elif 'image' in content_type:
             try:
                 self._save_img(response, target_url)
             except Exception as e:
                 _logger.error("Failed save image: {} [{}]".format(target_url, e))
             else:
-                #¸üĞÂÈÎÎñ×´Ì¬
+                #æ›´æ–°ä»»åŠ¡çŠ¶æ€
                 thread_name = threading.current_thread().name
                 with self.lock_status:
                     self.task_status['crawl_st'][thread_name]['img_count'] += 1
 
     def _parse_html(self, response, target_url, current_depth):
         """
-        ½âÎöÇëÇó·µ»ØµÄÒ³Ãæ
+        è§£æè¯·æ±‚è¿”å›çš„é¡µé¢
         :param response:
-        :param target_url: µ±Ç°Ò³ÃæµÄURL
-        :param current_depth: µ±Ç°Éî¶È
+        :param target_url: å½“å‰é¡µé¢çš„URL
+        :param current_depth: å½“å‰æ·±åº¦
         :return:
         """
-        # ³¢ÊÔ½âÂëresponse, ´«¸ølxml½øĞĞ½âÎö
+        # å°è¯•è§£ç response, ä¼ ç»™lxmlè¿›è¡Œè§£æ
         charset, html_text = self._decode_read(response)
         doc = lxml.html.document_fromstring(html_text)
 
-        # ½«¸ÃÍøÒ³ÖĞµÄÏà¶ÔÂ·¾¶×ª»»Îª¾ø¶ÔÂ·¾¶
-        # ÒÔ±ãÏÂÒ»²½µÄ´ò¿ªÁ´½Ó
+        # å°†è¯¥ç½‘é¡µä¸­çš„ç›¸å¯¹è·¯å¾„è½¬æ¢ä¸ºç»å¯¹è·¯å¾„
+        # ä»¥ä¾¿ä¸‹ä¸€æ­¥çš„æ‰“å¼€é“¾æ¥
         if not target_url.endswith('/'):
             target_url = target_url + '/'
         doc.make_links_absolute(target_url)
 
-        # ½âÎöÍ¼Æ¬Á´½Ó£¬¼ÓÈëÈÎÎñ¶ÓÁĞ£¬Éî¶È¼Ó1
+        # è§£æå›¾ç‰‡é“¾æ¥ï¼ŒåŠ å…¥ä»»åŠ¡é˜Ÿåˆ—ï¼Œæ·±åº¦åŠ 1
         img_nodes = doc.xpath("//img")
         for node in img_nodes:
             if 'src' in node.attrib:
                 self.put_task((current_depth + 1, node.attrib['src']))
 
-        # ½âÎöÒ³ÃæÁ´½Ó£¬¼ÓÈëÈÎÎñ¶ÓÁĞ£¬Éî¶È¼Ó1
+        # è§£æé¡µé¢é“¾æ¥ï¼ŒåŠ å…¥ä»»åŠ¡é˜Ÿåˆ—ï¼Œæ·±åº¦åŠ 1
         html_nodes = doc.xpath("//a")
         for node in html_nodes:
             if 'href' in node.attrib:
@@ -258,19 +258,19 @@ class DownloadPool(ThreadPool):
 
     def _decode_read(self, response):
         """
-        ³¢ÊÔ¶Ôresponse½øĞĞ½âÂë
+        å°è¯•å¯¹responseè¿›è¡Œè§£ç 
         :param response:
-        :return charset: responseµÄ×Ö·û¼¯
-        :return html_text: response½âÂëºóµÄ×Ö·û´®
+        :return charset: responseçš„å­—ç¬¦é›†
+        :return html_text: responseè§£ç åçš„å­—ç¬¦ä¸²
         """
         rdata = response.read()
 
-        # Ê×Ñ¡°´ÍøÒ³·µ»Ø×Ö·û¼¯½øĞĞ½âÂë
+        # é¦–é€‰æŒ‰ç½‘é¡µè¿”å›å­—ç¬¦é›†è¿›è¡Œè§£ç 
         match = re.search("charset=(\w+)", response.getheader('Content-Type'))
         if match is not None:
             charset = match.group(1)
             html_text = rdata.decode(charset)
-        # Èç¹ûÃ»ÓĞ·µ»Ø×Ö·û¼¯£¬Ôò³¢ÊÔÆäËû×Ö·û¼¯
+        # å¦‚æœæ²¡æœ‰è¿”å›å­—ç¬¦é›†ï¼Œåˆ™å°è¯•å…¶ä»–å­—ç¬¦é›†
         else:
             charset = 'unknown'
             if charset == 'unknown':
@@ -303,9 +303,9 @@ class DownloadPool(ThreadPool):
 
     def _save_img(self, response, target_url):
         """
-        ´Óresponse¶ÁÈ¡Í¼Æ¬£¬±£´æÍ¼Æ¬µ½Êı¾İ¿â
+        ä»responseè¯»å–å›¾ç‰‡ï¼Œä¿å­˜å›¾ç‰‡åˆ°æ•°æ®åº“
         :param response:
-        :param target_url: ¸ÃÍ¼Æ¬µÄurl
+        :param target_url: è¯¥å›¾ç‰‡çš„url
         :return:
         """
         with self.lock_sqlite:
@@ -313,13 +313,13 @@ class DownloadPool(ThreadPool):
 
     def status(self):
         """
-        ·µ»ØÏß³Ì³Øµ±Ç°µÄ×´Ì¬
+        è¿”å›çº¿ç¨‹æ± å½“å‰çš„çŠ¶æ€
         :return: self.task_status
         """
         with self.lock_status:
-            # »ñÈ¡ÈÎÎñ¶ÓÁĞµ±Ç°µÄ´óĞ¡
+            # è·å–ä»»åŠ¡é˜Ÿåˆ—å½“å‰çš„å¤§å°
             self.task_status["qsize"] = self.task_queue.qsize()
-            # »ñÈ¡Ã¿¸öÏß³ÌµÄ×´Ì¬
+            # è·å–æ¯ä¸ªçº¿ç¨‹çš„çŠ¶æ€
             for thread in self.threads:
                 self.task_status['crawl_st'][thread.name]['state'] = \
                     'alive' if thread.is_alive() else 'dead'
@@ -327,29 +327,29 @@ class DownloadPool(ThreadPool):
 
 class SqliteWrapper:
     """
-    Sqlite °ü¹üÀà£¬ÊµÏÖ¶Ô Sqlite µÄ´ò¿ª¡¢¶ÁĞ´¡¢¹Ø±Õ²Ù×÷¡£
+    Sqlite åŒ…è£¹ç±»ï¼Œå®ç°å¯¹ Sqlite çš„æ‰“å¼€ã€è¯»å†™ã€å…³é—­æ“ä½œã€‚
     """
     def __init__(self):
-        # Sqlite Ğ´ÈëËø£¬ÒÔ´ËÊµÏÖÏß³Ì°²È«µÄSqliteĞ´
-        # £¨¾­²âÊÔ£¬ÕâÖÖÄÚ²¿¼ÓËøµÄ·½Ê½£¬²»ÖªºÎÒò£¬ÔËĞĞ¾ÃÁË»á³öÏÖ×èÈûµÄÏÖÏó£¬
-        # ¸ÄÎªÍâ²¿µ÷ÓÃÕß×Ô¼º¼ÓËøºó£¬»ù±¾Ã»ÔÙ³öÏÖ×èÈû¡£ËùÒÔ¸ÃËø¾ÍÔİÊ±Ã»ÓÃµ½£©
+        # Sqlite å†™å…¥é”ï¼Œä»¥æ­¤å®ç°çº¿ç¨‹å®‰å…¨çš„Sqliteå†™
+        # ï¼ˆç»æµ‹è¯•ï¼Œè¿™ç§å†…éƒ¨åŠ é”çš„æ–¹å¼ï¼Œä¸çŸ¥ä½•å› ï¼Œè¿è¡Œä¹…äº†ä¼šå‡ºç°é˜»å¡çš„ç°è±¡ï¼Œ
+        # æ”¹ä¸ºå¤–éƒ¨è°ƒç”¨è€…è‡ªå·±åŠ é”åï¼ŒåŸºæœ¬æ²¡å†å‡ºç°é˜»å¡ã€‚æ‰€ä»¥è¯¥é”å°±æš‚æ—¶æ²¡ç”¨åˆ°ï¼‰
         self.lock = threading.Lock()
 
     def open(self, db_path):
         """
-        ´ò¿ªsqlite
-        :param db_path: sqliteÊı¾İ¿âÎÄ¼şÂ·¾¶
+        æ‰“å¼€sqlite
+        :param db_path: sqliteæ•°æ®åº“æ–‡ä»¶è·¯å¾„
         :return:
         """
         self.con = sqlite3.connect(db_path, check_same_thread=False)
         self.cur = self.con.cursor()
-        # ½¨±íresulte£¬ÁĞurl±£´æÍ¼Æ¬µÄÁ´½ÓµØÖ·£¬ÁĞimage±£´æÍ¼Æ¬ÄÚÈİ
+        # å»ºè¡¨resulteï¼Œåˆ—urlä¿å­˜å›¾ç‰‡çš„é“¾æ¥åœ°å€ï¼Œåˆ—imageä¿å­˜å›¾ç‰‡å†…å®¹
         self.cur.execute("create table if not exists resulte(url TEXT, image BLOB)")
         self.con.commit()
 
     def close(self):
         """
-        ¹Ø±Õsqlite
+        å…³é—­sqlite
         :return:
         """
         self.cur.close()
@@ -357,9 +357,9 @@ class SqliteWrapper:
 
     def write(self, url, img):
         """
-        Ğ´ÈëÍ¼Æ¬µ½ Sqlite¡£
-        :param url: Í¼Æ¬µÄURL
-        :param img: Í¼Æ¬¶ş½øÖÆÊı¾İ
+        å†™å…¥å›¾ç‰‡åˆ° Sqliteã€‚
+        :param url: å›¾ç‰‡çš„URL
+        :param img: å›¾ç‰‡äºŒè¿›åˆ¶æ•°æ®
         :return:
         """
         # with self.lock:
@@ -368,10 +368,10 @@ class SqliteWrapper:
 
     def read(self, dir):
         """
-        [²âÊÔÓÃ]
-        ½« Sqlite ÖĞ±£´æµÄÍ¼Æ¬ÌáÈ¡µ½ÎÄ¼ş¼ĞdirÏÂ£¬ÒÔ±ã²é¿´¡£
-        :param dir: Ä¿±êÎÄ¼ş¼Ğ
-        :return: ÌáÈ¡µÄÎÄ¼şÊıÁ¿
+        [æµ‹è¯•ç”¨]
+        å°† Sqlite ä¸­ä¿å­˜çš„å›¾ç‰‡æå–åˆ°æ–‡ä»¶å¤¹dirä¸‹ï¼Œä»¥ä¾¿æŸ¥çœ‹ã€‚
+        :param dir: ç›®æ ‡æ–‡ä»¶å¤¹
+        :return: æå–çš„æ–‡ä»¶æ•°é‡
         """
         self.cur.execute("select * from resulte")
         re_name = {}
@@ -380,12 +380,12 @@ class SqliteWrapper:
             url = row[0]
             img = row[1]
 
-            # Ã»ÓĞºó×ºÃûµÄÍ¼Æ¬Ãû³Æ£¬Ä¬ÈÏ¼ÓÉÏ .jpg µÄºó×º
+            # æ²¡æœ‰åç¼€åçš„å›¾ç‰‡åç§°ï¼Œé»˜è®¤åŠ ä¸Š .jpg çš„åç¼€
             base_name = os.path.basename(urlparse(url)[2])
             if len(os.path.splitext(base_name)[1]) == 0:
                 base_name += ".jpg"
 
-            # ¶ÔÓÚÖØÃûµÄÍ¼Æ¬Ãû³Æ£¬°´ÕÕÃû³ÆÒÀ´Î¼Ó1µÄ·½Ê½ÖØÃüÃû
+            # å¯¹äºé‡åçš„å›¾ç‰‡åç§°ï¼ŒæŒ‰ç…§åç§°ä¾æ¬¡åŠ 1çš„æ–¹å¼é‡å‘½å
             file_name = os.path.join(dir, base_name)
             if os.path.exists(file_name):
                 if base_name not in re_name:
@@ -402,13 +402,13 @@ class SqliteWrapper:
 
 class StatusThread(threading.Thread):
     """
-    ¶¨Ê±´òÓ¡ÅÀÈ¡×´Ì¬µÄÏß³ÌÀà
+    å®šæ—¶æ‰“å°çˆ¬å–çŠ¶æ€çš„çº¿ç¨‹ç±»
     """
     def __init__(self, downloader):
         super().__init__()
-        # Ö¸¶¨ÅÀ³æÊµÀı
+        # æŒ‡å®šçˆ¬è™«å®ä¾‹
         self.downloader = downloader
-        # Ïß³ÌÖÕÖ¹±êÖ¾
+        # çº¿ç¨‹ç»ˆæ­¢æ ‡å¿—
         self.stop_flag = threading.Event()
 
     def run(self):
@@ -416,30 +416,30 @@ class StatusThread(threading.Thread):
         :return:
         """
         while True:
-            # ÊÕµ½ÖÕÖ¹ÃüÁî
+            # æ”¶åˆ°ç»ˆæ­¢å‘½ä»¤
             if self.stop_flag.is_set():
                 break
 
-            # Ã¿¸ô3Ãë´òÓ¡Ò»´ÎÍ³¼ÆĞÅÏ¢
+            # æ¯éš”3ç§’æ‰“å°ä¸€æ¬¡ç»Ÿè®¡ä¿¡æ¯
             self._format_output_status()
             time.sleep(3)
 
     def _format_output_status(self):
         """
-        °´Ò»¶¨¸ñÊ½´òÓ¡³ö¸÷Ïß³Ì½ø¶ÈÒÔ¼°×Ü¼ÆĞÅÏ¢
+        æŒ‰ä¸€å®šæ ¼å¼æ‰“å°å‡ºå„çº¿ç¨‹è¿›åº¦ä»¥åŠæ€»è®¡ä¿¡æ¯
         :return:
         """
-        # Ïß³Ì°²È«Æğ¼û£¬Ê¹ÓÃÉî¿½±´
+        # çº¿ç¨‹å®‰å…¨èµ·è§ï¼Œä½¿ç”¨æ·±æ‹·è´
         task_status = copy.deepcopy(self.downloader.status())
-        # ´òÓ¡ÈÎÎñ¶ÓÁĞÊı
+        # æ‰“å°ä»»åŠ¡é˜Ÿåˆ—æ•°
         print("Task queue size: %d" % task_status["qsize"])
-        # ÉèÖÃ¸÷Ïß³ÌµÄÏÔÊ¾¸ñÊ½
+        # è®¾ç½®å„çº¿ç¨‹çš„æ˜¾ç¤ºæ ¼å¼
         line = "{0:<10}{1:>15}{2:>15}{3:>15}{4:>10}"
         print(line.format('Thread', 'Link Count', 'Image Count', 'Current Depth', 'State'))
         print(line.format('------', '----------', '-----------', '-------------', '-----'))
-        # Á´½ÓºÍÍ¼Æ¬×ÜÊı
+        # é“¾æ¥å’Œå›¾ç‰‡æ€»æ•°
         t_suc_link, t_suc_pic = 0, 0
-        # °´Ïß³ÌÃûµÄ´ÎĞòÒÀ´Î´òÓ¡
+        # æŒ‰çº¿ç¨‹åçš„æ¬¡åºä¾æ¬¡æ‰“å°
         for i in range(len(task_status['crawl_st'])):
             td_name = 'Thread-' + str(i + 1)
             print(line.format(td_name,
@@ -447,12 +447,12 @@ class StatusThread(threading.Thread):
                               task_status['crawl_st'][td_name]['img_count'],
                               task_status['crawl_st'][td_name]['cur_depth'],
                               task_status['crawl_st'][td_name]['state']))
-            # ¼ÆËã×ÜÊı
+            # è®¡ç®—æ€»æ•°
             t_suc_link += task_status['crawl_st'][td_name]['link_count']
             t_suc_pic += task_status['crawl_st'][td_name]['img_count']
-        # ´òÓ¡×ÜÊı
+        # æ‰“å°æ€»æ•°
         print(line.format('Total', t_suc_link, t_suc_pic, '', ''))
-        # ÖÕÖ¹ÌáÊ¾
+        # ç»ˆæ­¢æç¤º
         if task_status['stop']:
             print("[Stoping thread pool, please wait...]")
         else:
@@ -461,7 +461,7 @@ class StatusThread(threading.Thread):
 
     def stop(self):
         """
-        ÖÕÖ¹Ïß³Ì
+        ç»ˆæ­¢çº¿ç¨‹
         :return:
        """
         self.stop_flag.set()
@@ -469,7 +469,7 @@ class StatusThread(threading.Thread):
 
 def _init_logger(level, log_file):
     """
-    ³õÊ¼»¯ÈÕÖ¾
+    åˆå§‹åŒ–æ—¥å¿—
     :return:
     """
     global _logger
@@ -480,9 +480,9 @@ def _init_logger(level, log_file):
     _logger.addHandler(handler)
 
     '''
-    Ö»ÓĞĞ¡ÓÚÖ¸¶¨¼¶±ğµÄÈÕÖ¾²Å»á±»¼ÇÂ¼
-    ËùÒÔÖ¸¶¨¼¶±ğÔ½¸ß£¬¼ÇÂ¼Ô½ÏêÏ¸
-    ²Î¿¼python3ÎÄµµ£¬¼¶±ğÓëÊı×ÖµÄ¶ÔÓ¦¹ØÏµÎª
+    åªæœ‰å°äºæŒ‡å®šçº§åˆ«çš„æ—¥å¿—æ‰ä¼šè¢«è®°å½•
+    æ‰€ä»¥æŒ‡å®šçº§åˆ«è¶Šé«˜ï¼Œè®°å½•è¶Šè¯¦ç»†
+    å‚è€ƒpython3æ–‡æ¡£ï¼Œçº§åˆ«ä¸æ•°å­—çš„å¯¹åº”å…³ç³»ä¸º
     Level Numeric    value
     -------------    -----
     CRITICAL         50
@@ -496,7 +496,7 @@ def _init_logger(level, log_file):
 
 def _parse_args():
     """
-    ²ÎÊı½âÎö
+    å‚æ•°è§£æ
     :return:
     """
     import argparse
@@ -515,14 +515,14 @@ def _parse_args():
 if __name__ == '__main__':
     import sys
 
-    # ÉèÖÃÇëÇó³¬Ê±Öµ
+    # è®¾ç½®è¯·æ±‚è¶…æ—¶å€¼
     args = _parse_args()
     _OPENURL_TIMEOUT = args.timeout
 
-    # ³õÊ¼»¯ÈÕÖ¾
+    # åˆå§‹åŒ–æ—¥å¿—
     _init_logger(args.loglevel, args.logfile)
 
-    # ´ò¿ªsqliteÊı¾İ¿â
+    # æ‰“å¼€sqliteæ•°æ®åº“
     _sqlite_wrapper = SqliteWrapper()
     try:
         _sqlite_wrapper.open(args.dbfile)
@@ -531,20 +531,20 @@ if __name__ == '__main__':
         _sqlite_wrapper.close()
         sys.exit(-1)
 
-    # ¹¹½¨ÅÀÈ¡Ïß³Ì³ØºÍ×´Ì¬´òÓ¡Ïß³Ì
+    # æ„å»ºçˆ¬å–çº¿ç¨‹æ± å’ŒçŠ¶æ€æ‰“å°çº¿ç¨‹
     downloader = DownloadPool(thread_num=args.thread, depth=args.deep)
     status_thread = StatusThread(downloader)
 
-    # Æô¶¯¸÷Ïß³Ì£¬¿ªÊ¼¼ÆÊ±£¨ÎªºóÃæ¼ÆËãÅÀÈ¡×ÜºÄÊ±£©
+    # å¯åŠ¨å„çº¿ç¨‹ï¼Œå¼€å§‹è®¡æ—¶ï¼ˆä¸ºåé¢è®¡ç®—çˆ¬å–æ€»è€—æ—¶ï¼‰
     start = time.time()
     status_thread.start()
     downloader.start()
 
-    # ·ÅÈë³õÊ¼urlµ½Ïß³Ì³Ø£¬£¨ĞèÊ¹ÓÃÍêÕûµÄurl¸ñÊ½£©
+    # æ”¾å…¥åˆå§‹urlåˆ°çº¿ç¨‹æ± ï¼Œï¼ˆéœ€ä½¿ç”¨å®Œæ•´çš„urlæ ¼å¼ï¼‰
     if urlparse(args.url).scheme == '':
         args.url = "http://" + args.url
     downloader.put_task((0, args.url))
-    # ½øÈëÏß³Ì³ØµÈ´ı
+    # è¿›å…¥çº¿ç¨‹æ± ç­‰å¾…
     try:
         downloader.wait()
     except KeyboardInterrupt:
@@ -553,7 +553,7 @@ if __name__ == '__main__':
         downloader.stop()
     status_thread.stop()
 
-    # ´òÓ¡ÅÀÈ¡×ÜºÄÊ±£¬¹Ø±Õsqlite
+    # æ‰“å°çˆ¬å–æ€»è€—æ—¶ï¼Œå…³é—­sqlite
     end = time.time()
     print("Total consumed time: %d seconds." % (end - start))
     _sqlite_wrapper.close()

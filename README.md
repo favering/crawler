@@ -3,6 +3,10 @@
 
 为不漏掉图片，该爬虫会对所有的页面链接进行请求，凡是遇到返回content-type为image的，都会进行保存。
 
+支持限定域名进行爬取。
+
+异常都记录在了日志当中。
+
 usage:
 输入"crawler.py -h"查看使用方法
 
@@ -11,3 +15,6 @@ usage:
 
 usage:
 输入"sqlite_reader.py -h"查看使用方法
+
+# crawler.py 运行截图
+![image](https://github.com/favering/crawler/blob/master/screenshot.jpg)

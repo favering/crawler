@@ -1,18 +1,17 @@
 #! /usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import sys
 import queue
 import urllib.request
 import time
-import threading
 import re
-import lxml.etree
-import lxml.html
 from urllib.parse import urlparse, quote
 import os
 import logging
 import logging.handlers
 import copy
+import threading
 import sqlite3
 
 # 日志对象
@@ -79,11 +78,22 @@ class DownloadPool(ThreadPool):
     """
     网页爬取线程池
     """
-    def __init__(self, thread_num, depth):
+    def __init__(self, thread_num, url, depth, no_cross_domain_except):
         super().__init__(thread_num)
 
         # 目标爬取深度
         self.depth = depth
+
+        # 使url格式完整
+        if urlparse(url).scheme == '':
+            url = "http://" + url
+
+        # 允许爬取任意域名
+        if no_cross_domain_except is None:
+            self.allowed_domain = None
+        # 只允许爬取指定域名（默认包含初始url的域）
+        else:
+            self.allowed_domain = no_cross_domain_except + [urlparse(url).netloc]
 
         # 处理过的url链接
         self.prcessed_url = []
@@ -113,6 +123,9 @@ class DownloadPool(ThreadPool):
         self.lock_url = threading.Lock()
         # sqlite 读写锁
         self.lock_sqlite = threading.Lock()
+
+        # 放入目的url到线程池
+        self.put_task((0, url))
 
     def stop(self):
         """
@@ -244,17 +257,47 @@ class DownloadPool(ThreadPool):
             target_url = target_url + '/'
         doc.make_links_absolute(target_url)
 
-        # 解析图片链接，加入任务队列，深度加1
+        # 解析图片链接
         img_nodes = doc.xpath("//img")
         for node in img_nodes:
-            if 'src' in node.attrib:
-                self.put_task((current_depth + 1, node.attrib['src']))
+            if 'src' not in node.attrib:
+                continue
 
-        # 解析页面链接，加入任务队列，深度加1
+            # url格式有误的，忽略
+            uf = urlparse(node.attrib['src'])
+            if uf.scheme == '' or uf.netloc == '':
+                _logger.warning("Uncorrect url [{}]".format(node.attrib['src']))
+                continue
+
+            # 检查是否允许爬取该url域
+            if self.allowed_domain is None:
+                # 加入任务队列，深度加1
+                self.put_task((current_depth + 1, node.attrib['src']))
+            else:
+                if uf.netloc in self.allowed_domain:
+                    # 加入任务队列，深度加1
+                    self.put_task((current_depth + 1, node.attrib['src']))
+
+        # 解析页面链接。（页面链接也有可能是图片）
         html_nodes = doc.xpath("//a")
         for node in html_nodes:
-            if 'href' in node.attrib:
+            if 'href' not in node.attrib:
+                continue
+
+            # url格式有误的，忽略
+            uf = urlparse(node.attrib['href'])
+            if uf.scheme == '' or uf.netloc == '':
+                _logger.warning("Uncorrect url [{}]".format(node.attrib['href']))
+                continue
+
+             # 检查是否允许爬取该url域
+            if self.allowed_domain is None:
+                # 加入任务队列，深度加1，
                 self.put_task((current_depth + 1, node.attrib['href']))
+            else:
+                if uf.netloc in self.allowed_domain:
+                    # 加入任务队列，深度加1
+                    self.put_task((current_depth + 1, node.attrib['href']))
 
     def _decode_read(self, response):
         """
@@ -269,33 +312,45 @@ class DownloadPool(ThreadPool):
         match = re.search("charset=(\w+)", response.getheader('Content-Type'))
         if match is not None:
             charset = match.group(1)
-            html_text = rdata.decode(charset)
-        # 如果没有返回字符集，则尝试其他字符集
+            try:
+                html_text = rdata.decode(charset)
+            except UnicodeError as e:
+                charset = 'unknown'
         else:
             charset = 'unknown'
-            if charset == 'unknown':
-                try:
-                    html_text = rdata.decode("UTF-8")
-                except UnicodeError as e:
-                    pass
-                else:
-                    charset = 'UTF-8'
 
-            if charset == 'unknown':
-                try:
-                    html_text = rdata.decode("ISO-8859-1")
-                except UnicodeError as e:
-                    pass
-                else:
-                    charset = 'ISO-8859-1'
+        # 未找到字符集或指定字符集不正确，尝试其他字符集
+        if charset == 'unknown':
+            try:
+                html_text = rdata.decode("UTF-8")
+            except UnicodeError as e:
+                pass
+            else:
+                charset = 'UTF-8'
 
-            if charset == 'unknown':
-                try:
-                    html_text = rdata.decode("gb18030")
-                except UnicodeError as e:
-                    pass
-                else:
-                    charset = 'gb18030'
+        if charset == 'unknown':
+            try:
+                html_text = rdata.decode("GBK")
+            except UnicodeError as e:
+                pass
+            else:
+                charset = "GBK"
+
+        if charset == 'unknown':
+            try:
+                html_text = rdata.decode("ISO-8859-1")
+            except UnicodeError as e:
+                pass
+            else:
+                charset = 'ISO-8859-1'
+
+        if charset == 'unknown':
+            try:
+                html_text = rdata.decode("gb18030")
+            except UnicodeError as e:
+                pass
+            else:
+                charset = 'gb18030'
 
         if charset == 'unknown':
             raise NotImplementedError("Cannot decode the page")
@@ -510,10 +565,16 @@ def _parse_args():
     parser.add_argument('-o', '--timeout', type=int, default=10, help="http request timeout, default 10.")
     parser.add_argument('-f', '--logfile', default="crawler.log", help="log file path, default crawler.log.")
     parser.add_argument('-l', '--loglevel', choices=[1,2,3,4,5], default=5, help="log level, default 5.")
+    parser.add_argument('-ne', '--no-cross-domain-except', nargs="*", help=\
+        "disable cross domain crawling, except the specified domains. eg:\n"
+        "./crawler.py, allow crawling any domain.\n"
+        "./crawler.py -ne, only allow crawling the --url specified domain.\n"
+        "./crawler.py -ne example1.com example2.com, allow those two domain and the --url specified domain.")
     return parser.parse_args()
 
 if __name__ == '__main__':
-    import sys
+    import lxml.etree
+    import lxml.html
 
     # 设置请求超时值
     args = _parse_args()
@@ -532,7 +593,7 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     # 构建爬取线程池和状态打印线程
-    downloader = DownloadPool(thread_num=args.thread, depth=args.deep)
+    downloader = DownloadPool(args.thread, args.url, args.deep, args.no_cross_domain_except)
     status_thread = StatusThread(downloader)
 
     # 启动各线程，开始计时（为后面计算爬取总耗时）
@@ -540,10 +601,6 @@ if __name__ == '__main__':
     status_thread.start()
     downloader.start()
 
-    # 放入初始url到线程池，（需使用完整的url格式）
-    if urlparse(args.url).scheme == '':
-        args.url = "http://" + args.url
-    downloader.put_task((0, args.url))
     # 进入线程池等待
     try:
         downloader.wait()

@@ -17,4 +17,4 @@ usage:
 输入"sqlite_reader.py -h"查看使用方法
 
 # crawler.py 运行截图
-![image](https://github.com/favering/crawler/blob/master/screenshot.jpg)
+![image](https://github.com/favering/crawler/blob/master/screenshot.png)
